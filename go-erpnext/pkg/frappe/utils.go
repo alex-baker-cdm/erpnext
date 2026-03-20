@@ -99,12 +99,13 @@ func Getdate(value string) time.Time {
 		return time.Time{}
 	}
 
-	// Try common formats
+	// Only accept unambiguous date formats that match Python frappe.utils.getdate.
+	// Ambiguous formats like "01-02-2006" (MM-DD) and "02-01-2006" (DD-MM) were
+	// intentionally removed because a date such as "03-04-2024" would silently
+	// parse as the wrong date depending on which format matches first.
 	formats := []string{
 		"2006-01-02",
 		"2006-01-02 15:04:05",
-		"01-02-2006",
-		"02-01-2006",
 		"2006/01/02",
 	}
 
