@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alex-baker-cdm/erpnext/go-erpnext/pkg/dashboard"
 	"github.com/alex-baker-cdm/erpnext/go-erpnext/pkg/db"
 	"github.com/alex-baker-cdm/erpnext/go-erpnext/pkg/queries"
 	"github.com/alex-baker-cdm/erpnext/go-erpnext/pkg/reports"
@@ -111,6 +112,16 @@ func main() {
 	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_filtered_child_rows", queries.MakeHandler(dbConn, queries.GetFilteredChildRows))
 	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_project_name", queries.MakeHandler(dbConn, queries.GetProjectName))
 	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_delivery_notes_to_be_billed", queries.MakeHandler(dbConn, queries.GetDeliveryNotesToBeBilled))
+
+	// Dashboard chart sources — Phase 2C
+	mux.HandleFunc("/api/method/erpnext.accounts.dashboard_chart_source.account_balance_timeline.account_balance_timeline.get", dashboard.MakeHandler(dbConn, dashboard.AccountBalanceTimeline))
+	mux.HandleFunc("/api/method/erpnext.stock.dashboard_chart_source.warehouse_wise_stock_value.warehouse_wise_stock_value.get", dashboard.MakeHandler(dbConn, dashboard.WarehouseWiseStockValue))
+	mux.HandleFunc("/api/method/erpnext.stock.dashboard_chart_source.stock_value_by_item_group.stock_value_by_item_group.get", dashboard.MakeHandler(dbConn, dashboard.StockValueByItemGroup))
+
+	// Dashboard pages
+	mux.HandleFunc("/api/method/erpnext.stock.dashboard.item_dashboard.get_data", dashboard.MakeHandler(dbConn, dashboard.ItemDashboardGetData))
+	mux.HandleFunc("/api/method/erpnext.stock.dashboard.warehouse_capacity_dashboard.get_data", dashboard.MakeHandler(dbConn, dashboard.WarehouseCapacityGetData))
+
 	mux.HandleFunc("/", catchAllHandler)
 
 	handler := loggingMiddleware(mux)
