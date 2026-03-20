@@ -1,0 +1,38 @@
+{
+    "module": "stock.valuation",
+    "function": "LIFOValuation",
+    "fixtures": [
+        {
+            "name": "lifo_consumption",
+            "input": {
+                "operations": [
+                    {"action": "add", "qty": 10, "rate": 10},
+                    {"action": "add", "qty": 10, "rate": 20},
+                    {"action": "remove", "qty": 15}
+                ]
+            },
+            "expected": {
+                "state": [[5, 10]],
+                "total_qty": 5,
+                "total_value": 50,
+                "last_consumed": [[10, 20], [5, 10]]
+            }
+        },
+        {
+            "name": "lifo_going_negative",
+            "input": {
+                "operations": [
+                    {"action": "add", "qty": 10, "rate": 10},
+                    {"action": "add", "qty": 10, "rate": 20},
+                    {"action": "remove", "qty": 25}
+                ]
+            },
+            "expected": {
+                "state": [[-5, 10]],
+                "total_qty": -5,
+                "total_value": -50,
+                "last_consumed": [[10, 20], [10, 10], [5, 10]]
+            }
+        }
+    ]
+}
