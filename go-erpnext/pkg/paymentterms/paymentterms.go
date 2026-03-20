@@ -115,8 +115,8 @@ func GetPaymentTermDetails(term PaymentTerm, postingDate time.Time, grandTotal, 
 	details.BaseOutstanding = details.BasePaymentAmount
 
 	if !billDate.IsZero() {
-		details.DueDate = GetDueDate(term, billDate, time.Time{})
-		details.DiscountDate = GetDiscountDate(term, billDate, time.Time{})
+		details.DueDate = GetDueDate(term, time.Time{}, billDate)
+		details.DiscountDate = GetDiscountDate(term, time.Time{}, billDate)
 	} else if !postingDate.IsZero() {
 		details.DueDate = GetDueDate(term, postingDate, time.Time{})
 		details.DiscountDate = GetDiscountDate(term, postingDate, time.Time{})

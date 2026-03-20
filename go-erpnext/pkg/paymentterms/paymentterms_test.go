@@ -175,6 +175,43 @@ func TestGetPaymentTermDetails_DueDateClamping(t *testing.T) {
 	}
 }
 
+func TestGetPaymentTermDetails_BillDateUsedOverPostingDate(t *testing.T) {
+	// When both billDate and postingDate are provided, the due date and
+	// discount date must be computed from billDate, NOT postingDate.
+	// This test would fail under the old code if pickDate's preference
+	// order were ever changed, because billDate was previously passed in
+	// the postingDate parameter position.
+	//
+	// We choose dates so that:
+	//   - billDate (Jan 10) + 10 credit days = Jan 20 (due date from bill)
+	//   - postingDate (Jan 5) + 10 credit days = Jan 15 (due date from posting)
+	// Both computed dates are AFTER postingDate so the clamping logic
+	// does not interfere with the assertion.
+	term := PaymentTerm{
+		DueDateBasedOn:          "Day(s) after invoice date",
+		CreditDays:              10,
+		DiscountValidityBasedOn: "Day(s) after invoice date",
+		DiscountValidity:        5,
+		InvoicePortion:          100,
+	}
+	postingDate := d(2024, time.January, 5)
+	billDate := d(2024, time.January, 10)
+
+	details := GetPaymentTermDetails(term, postingDate, 1000, 1000, billDate)
+
+	// Due date should be billDate + 10 = 2024-01-20, NOT postingDate + 10 = 2024-01-15
+	wantDue := d(2024, time.January, 20)
+	if !details.DueDate.Equal(wantDue) {
+		t.Errorf("DueDate = %v, want %v (based on billDate, not postingDate)", details.DueDate, wantDue)
+	}
+
+	// Discount date should be billDate + 5 = 2024-01-15, NOT postingDate + 5 = 2024-01-10
+	wantDiscount := d(2024, time.January, 15)
+	if !details.DiscountDate.Equal(wantDiscount) {
+		t.Errorf("DiscountDate = %v, want %v (based on billDate, not postingDate)", details.DiscountDate, wantDiscount)
+	}
+}
+
 func TestGetPaymentTermDetails_ZeroTime(t *testing.T) {
 	term := PaymentTerm{
 		DueDateBasedOn:          "Day(s) after invoice date",
