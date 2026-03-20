@@ -28,11 +28,17 @@ func GetPeggedRate(peggedMap PeggedMap, fromCurrency, toCurrency string, baseRat
 	if fromOk && toOk {
 		// Case 1: Both are present and pegged to same base
 		if fromEntry.PeggedAgainst == toEntry.PeggedAgainst {
+			if fromEntry.Ratio == 0 {
+				return nil
+			}
 			rate := (1 / fromEntry.Ratio) * toEntry.Ratio
 			return &rate
 		}
 
 		// Case 2: Both are present but pegged to different bases
+		if fromEntry.Ratio == 0 {
+			return nil
+		}
 		if baseRateFn == nil {
 			return nil
 		}
@@ -52,6 +58,9 @@ func GetPeggedRate(peggedMap PeggedMap, fromCurrency, toCurrency string, baseRat
 
 	// Case 4: to_currency is pegged to from_currency
 	if toOk && toEntry.PeggedAgainst == fromCurrency {
+		if toEntry.Ratio == 0 {
+			return nil
+		}
 		rate := 1 / toEntry.Ratio
 		return &rate
 	}
