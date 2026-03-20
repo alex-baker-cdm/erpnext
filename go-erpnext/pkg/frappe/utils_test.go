@@ -93,7 +93,12 @@ func TestGetdate(t *testing.T) {
 	}{
 		{"standard format", "2024-01-15", time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)},
 		{"with time", "2024-01-15 10:30:00", time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)},
+		{"slash format", "2024/01/15", time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)},
 		{"empty string", "", time.Time{}},
+		{"whitespace only", "   ", time.Time{}},
+		{"ambiguous MM-DD-YYYY rejected", "03-04-2024", time.Time{}},
+		{"ambiguous DD-MM-YYYY rejected", "15-01-2024", time.Time{}},
+		{"invalid format", "not-a-date", time.Time{}},
 	}
 
 	for _, tt := range tests {
