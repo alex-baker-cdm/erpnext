@@ -78,6 +78,9 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/method/go_erpnext.ping", pingHandler)
 
+	// Register all reports — Phase 2D
+	reports.RegisterAllReports(dbConn)
+
 	// Report runner — Phase 2A
 	mux.HandleFunc("/api/method/frappe.desk.query_report.run", reports.RunReportHandler(dbConn))
 
