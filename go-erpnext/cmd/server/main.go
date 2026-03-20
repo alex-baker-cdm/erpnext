@@ -9,6 +9,9 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/alex-baker-cdm/erpnext/go-erpnext/pkg/dashboard"
+	"github.com/alex-baker-cdm/erpnext/go-erpnext/pkg/db"
 )
 
 // loggingMiddleware wraps an http.Handler and logs each request with method, path, status, and duration.
@@ -53,9 +56,35 @@ func main() {
 		port = "8001"
 	}
 
+	// Optional: connect to database if site path is configured
+	var dbConn *db.DB
+	sitePath := os.Getenv("FRAPPE_SITE_PATH")
+	if sitePath != "" {
+		cfg, err := db.ReadSiteConfig(sitePath)
+		if err != nil {
+			log.Printf("Warning: could not read site config: %v (dashboard endpoints will not work)", err)
+		} else {
+			dbConn, err = db.New(cfg)
+			if err != nil {
+				log.Printf("Warning: could not connect to database: %v (dashboard endpoints will not work)", err)
+			} else {
+				defer dbConn.Close()
+			}
+		}
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/method/go_erpnext.ping", pingHandler)
-	// Add more routes here as Go implementations are added
+
+	// Dashboard chart sources
+	mux.HandleFunc("/api/method/erpnext.accounts.dashboard_chart_source.account_balance_timeline.account_balance_timeline.get", dashboard.MakeHandler(dbConn, dashboard.AccountBalanceTimeline))
+	mux.HandleFunc("/api/method/erpnext.stock.dashboard_chart_source.warehouse_wise_stock_value.warehouse_wise_stock_value.get", dashboard.MakeHandler(dbConn, dashboard.WarehouseWiseStockValue))
+	mux.HandleFunc("/api/method/erpnext.stock.dashboard_chart_source.stock_value_by_item_group.stock_value_by_item_group.get", dashboard.MakeHandler(dbConn, dashboard.StockValueByItemGroup))
+
+	// Dashboard pages
+	mux.HandleFunc("/api/method/erpnext.stock.dashboard.item_dashboard.get_data", dashboard.MakeHandler(dbConn, dashboard.ItemDashboardGetData))
+	mux.HandleFunc("/api/method/erpnext.stock.dashboard.warehouse_capacity_dashboard.get_data", dashboard.MakeHandler(dbConn, dashboard.WarehouseCapacityGetData))
+
 	mux.HandleFunc("/", catchAllHandler)
 
 	handler := loggingMiddleware(mux)

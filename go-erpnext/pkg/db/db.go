@@ -170,6 +170,19 @@ type ListOptions struct {
 	Limit   int
 }
 
+// RawQuery executes a raw SQL query and returns the resulting rows.
+// The caller is responsible for closing the returned *sql.Rows.
+// All user-provided values must be passed as args (parameterized queries).
+func (d *DB) RawQuery(query string, args ...interface{}) (*sql.Rows, error) {
+	return d.conn.Query(query, args...)
+}
+
+// RawQueryRow executes a raw SQL query that is expected to return at most one row.
+// All user-provided values must be passed as args (parameterized queries).
+func (d *DB) RawQueryRow(query string, args ...interface{}) *sql.Row {
+	return d.conn.QueryRow(query, args...)
+}
+
 // GetList retrieves a list of documents matching the given criteria.
 // Equivalent to frappe.get_list(doctype, filters, fields, order_by, limit).
 func (d *DB) GetList(doctype string, opts ListOptions) ([]map[string]interface{}, error) {
