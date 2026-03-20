@@ -10,9 +10,15 @@ import (
 // Flt converts a value to float64 and rounds to the given precision.
 // This is the Go equivalent of frappe.utils.flt.
 // If precision is < 0, no rounding is applied.
-// Uses strconv.FormatFloat with 'f' verb to match Python's round() behaviour,
-// which performs banker's rounding on the decimal representation rather than
-// on the binary floating-point value multiplied by a power of 10.
+//
+// Rounding behaviour: uses strconv.FormatFloat with 'f' verb, which applies
+// IEEE 754 "round half to even" (banker's rounding) on the binary float64
+// representation. This matches Python's built-in round() for all tested
+// edge cases, including midpoint values like 0.5, 1.5, 2.5, 2.675, and 0.125.
+//
+// Both Go and Python operate on the same IEEE 754 binary64 value, so results
+// agree even for values like 2.675 (stored as ≈2.6749…, rounds to 2.67) where
+// the decimal midpoint is not exactly representable.
 func Flt(value float64, precision int) float64 {
 	if precision < 0 {
 		return value
