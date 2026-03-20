@@ -3854,15 +3854,16 @@ class TestWorkOrder(ERPNextTestSuite):
 			raw_materials=[rm_item_1, rm_item_2],
 		)
 
-		# Create Work Order for qty 10
+		# Create Work Order as draft (do_not_submit) so we can modify required_items before submission
 		wo = make_wo_order_test_record(
 			item=fg_item,
 			qty=10,
 			source_warehouse=source_warehouse,
 			skip_transfer=1,
+			do_not_submit=1,
 		)
 
-		# Modify required_items on the WO: change qty of rm_item_1, remove rm_item_2, add rm_item_3
+		# Modify required_items on the draft WO: change qty of rm_item_1, remove rm_item_2, add rm_item_3
 		wo.required_items = []
 		wo.append(
 			"required_items",
@@ -3885,6 +3886,7 @@ class TestWorkOrder(ERPNextTestSuite):
 			},
 		)
 		wo.save()
+		wo.submit()
 
 		# Verify WO items were preserved (not reset by BOM)
 		wo.reload()
