@@ -85,6 +85,27 @@ func New(cfg SiteConfig) (*DB, error) {
 	return &DB{conn: conn, cfg: cfg}, nil
 }
 
+// sanitizeOrderBy validates and returns a safe ORDER BY clause.
+// It accepts a single column name with an optional ASC/DESC direction.
+func sanitizeOrderBy(orderBy string) (string, error) {
+	parts := strings.Fields(orderBy)
+	if len(parts) == 0 || len(parts) > 2 {
+		return "", fmt.Errorf("invalid order_by clause: %q", orderBy)
+	}
+	if err := sanitizeIdentifier(parts[0], "order by field"); err != nil {
+		return "", err
+	}
+	direction := "ASC"
+	if len(parts) == 2 {
+		upper := strings.ToUpper(parts[1])
+		if upper != "ASC" && upper != "DESC" {
+			return "", fmt.Errorf("invalid order direction: %q", parts[1])
+		}
+		direction = upper
+	}
+	return fmt.Sprintf(" ORDER BY `%s` %s", parts[0], direction), nil
+}
+
 // Close closes the underlying database connection.
 func (d *DB) Close() error {
 	return d.conn.Close()
@@ -166,6 +187,10 @@ func (d *DB) GetValue(doctype, name, fieldname string) (interface{}, error) {
 type ListOptions struct {
 	Filters map[string]interface{}
 	Fields  []string
+	// OrderBy specifies the column to sort results by, with an optional direction.
+	// Format: "<field>" or "<field> ASC" or "<field> DESC".
+	// The field name must be a valid SQL identifier (alphanumeric and underscores).
+	// The direction, if provided, must be either "ASC" or "DESC" (case-insensitive).
 	OrderBy string
 	Limit   int
 }
@@ -205,7 +230,11 @@ func (d *DB) GetList(doctype string, opts ListOptions) ([]map[string]interface{}
 	}
 
 	if opts.OrderBy != "" {
-		query += " ORDER BY " + opts.OrderBy
+		orderClause, err := sanitizeOrderBy(opts.OrderBy)
+		if err != nil {
+			return nil, err
+		}
+		query += orderClause
 	}
 
 	if opts.Limit > 0 {
