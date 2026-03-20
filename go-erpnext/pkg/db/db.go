@@ -90,6 +90,14 @@ func (d *DB) Close() error {
 	return d.conn.Close()
 }
 
+// Query executes a raw SQL query with the given arguments and returns the resulting rows.
+// Callers are responsible for closing the returned *sql.Rows.
+// Table and column names in the query must already be safe (use sanitizeIdentifier
+// or backtick-quoted literals); all values must be passed as args (parameterised).
+func (d *DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	return d.conn.Query(query, args...)
+}
+
 // tableName converts a doctype name to its MariaDB table name.
 // e.g., "Foo Bar" -> "`tabFoo Bar`"
 func tableName(doctype string) string {
@@ -168,6 +176,38 @@ type ListOptions struct {
 	Fields  []string
 	OrderBy string
 	Limit   int
+}
+
+// RawQuery executes an arbitrary SQL query with parameterized arguments.
+// Returns the result rows. The caller is responsible for closing the rows.
+func (d *DB) RawQuery(query string, args ...interface{}) (*sql.Rows, error) {
+	return d.conn.Query(query, args...)
+}
+
+// RawQueryRow executes a query that is expected to return at most one row.
+func (d *DB) RawQueryRow(query string, args ...interface{}) *sql.Row {
+	return d.conn.QueryRow(query, args...)
+}
+
+// EstimateCount returns an estimated row count for the given doctype table.
+// Uses COUNT(*) for accuracy (matching frappe.db.estimate_count behavior for MariaDB).
+func (d *DB) EstimateCount(doctype string) (int64, error) {
+	if err := sanitizeIdentifier(doctype, "doctype"); err != nil {
+		return 0, err
+	}
+	var count int64
+	query := fmt.Sprintf("SELECT COUNT(*) FROM %s", tableName(doctype))
+	err := d.conn.QueryRow(query).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("estimating count for %s: %w", doctype, err)
+	}
+	return count, nil
+}
+
+// SanitizeIdentifier validates that a string is a safe SQL identifier.
+// This is the exported version of sanitizeIdentifier for use by other packages.
+func SanitizeIdentifier(name, context string) error {
+	return sanitizeIdentifier(name, context)
 }
 
 // GetList retrieves a list of documents matching the given criteria.
