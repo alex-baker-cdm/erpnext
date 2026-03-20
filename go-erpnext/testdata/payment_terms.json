@@ -1,0 +1,39 @@
+{
+    "module": "controllers.accounts_controller",
+    "function": "get_due_date",
+    "fixtures": [
+        {
+            "name": "days_after_invoice",
+            "input": {
+                "due_date_based_on": "Day(s) after invoice date",
+                "credit_days": 30,
+                "posting_date": "2024-01-15"
+            },
+            "expected": {
+                "due_date": "2024-02-14"
+            }
+        },
+        {
+            "name": "days_after_end_of_month",
+            "input": {
+                "due_date_based_on": "Day(s) after the end of the invoice month",
+                "credit_days": 15,
+                "posting_date": "2024-01-15"
+            },
+            "expected": {
+                "due_date": "2024-02-15"
+            }
+        },
+        {
+            "name": "months_after_end_of_month",
+            "input": {
+                "due_date_based_on": "Month(s) after the end of the invoice month",
+                "credit_months": 2,
+                "posting_date": "2024-01-15"
+            },
+            "expected": {
+                "due_date": "2024-03-31"
+            }
+        }
+    ]
+}
