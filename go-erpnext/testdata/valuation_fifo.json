@@ -1,0 +1,93 @@
+{
+    "module": "stock.valuation",
+    "function": "FIFOValuation",
+    "fixtures": [
+        {
+            "name": "simple_addition",
+            "input": {
+                "operations": [
+                    {"action": "add", "qty": 1, "rate": 10}
+                ]
+            },
+            "expected": {
+                "state": [[1, 10]],
+                "total_qty": 1,
+                "total_value": 10
+            }
+        },
+        {
+            "name": "simple_removal",
+            "input": {
+                "operations": [
+                    {"action": "add", "qty": 1, "rate": 10},
+                    {"action": "remove", "qty": 1}
+                ]
+            },
+            "expected": {
+                "state": [],
+                "total_qty": 0,
+                "total_value": 0
+            }
+        },
+        {
+            "name": "merge_same_rate",
+            "input": {
+                "operations": [
+                    {"action": "add", "qty": 1, "rate": 10},
+                    {"action": "add", "qty": 1, "rate": 10}
+                ]
+            },
+            "expected": {
+                "state": [[2, 10]],
+                "total_qty": 2,
+                "total_value": 20
+            }
+        },
+        {
+            "name": "negative_stock",
+            "input": {
+                "initial_state": [],
+                "operations": [
+                    {"action": "remove", "qty": 1, "outgoing_rate": 5}
+                ]
+            },
+            "expected": {
+                "state": [[-1, 5]],
+                "total_qty": -1,
+                "total_value": -5
+            }
+        },
+        {
+            "name": "remove_specified_rate",
+            "input": {
+                "operations": [
+                    {"action": "add", "qty": 1, "rate": 10},
+                    {"action": "add", "qty": 1, "rate": 20},
+                    {"action": "remove", "qty": 1, "outgoing_rate": 20}
+                ]
+            },
+            "expected": {
+                "state": [[1, 10]],
+                "total_qty": 1,
+                "total_value": 10
+            }
+        },
+        {
+            "name": "remove_multiple_bins",
+            "input": {
+                "operations": [
+                    {"action": "add", "qty": 1, "rate": 10},
+                    {"action": "add", "qty": 2, "rate": 20},
+                    {"action": "add", "qty": 1, "rate": 20},
+                    {"action": "add", "qty": 5, "rate": 20},
+                    {"action": "remove", "qty": 4}
+                ]
+            },
+            "expected": {
+                "state": [[5, 20]],
+                "total_qty": 5,
+                "total_value": 100
+            }
+        }
+    ]
+}
