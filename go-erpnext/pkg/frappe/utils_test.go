@@ -22,6 +22,17 @@ func TestFlt(t *testing.T) {
 		{"negative precision", 1.2345, -1, 1.2345},
 		{"large precision", 1.23456789, 6, 1.234568},
 		{"negative value", -1.2345, 2, -1.23},
+
+		// Edge cases: IEEE 754 midpoint rounding.
+		// 2.675 is stored as 2.6749999...99 in float64, so both Go and Python round it down.
+		{"IEEE 754 midpoint 2.675", 2.675, 2, 2.67},
+		// Banker's rounding (round half to even) at precision 0.
+		{"banker 0.5 -> 0 (even)", 0.5, 0, 0.0},
+		{"banker 1.5 -> 2 (even)", 1.5, 0, 2.0},
+		{"banker 2.5 -> 2 (even)", 2.5, 0, 2.0},
+		{"banker 3.5 -> 4 (even)", 3.5, 0, 4.0},
+		// 0.125 at precision 2: stored as 0.125 exactly, banker's rounds to 0.12 (even).
+		{"banker 0.125 -> 0.12 (even)", 0.125, 2, 0.12},
 	}
 
 	for _, tt := range tests {
