@@ -129,6 +129,10 @@ func TestAddMonths(t *testing.T) {
 		{"31 to 30-day month", time.Date(2024, 3, 31, 0, 0, 0, 0, time.UTC), 1, time.Date(2024, 4, 30, 0, 0, 0, 0, time.UTC)},
 		{"negative months", time.Date(2024, 3, 31, 0, 0, 0, 0, time.UTC), -1, time.Date(2024, 2, 29, 0, 0, 0, 0, time.UTC)},
 		{"no clamp needed", time.Date(2024, 1, 28, 0, 0, 0, 0, time.UTC), 1, time.Date(2024, 2, 28, 0, 0, 0, 0, time.UTC)},
+		{"negative cross year boundary", time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC), -1, time.Date(2023, 12, 15, 0, 0, 0, 0, time.UTC)},
+		{"negative cross multiple years", time.Date(2024, 3, 15, 0, 0, 0, 0, time.UTC), -15, time.Date(2022, 12, 15, 0, 0, 0, 0, time.UTC)},
+		{"negative month end clamp dec", time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC), -1, time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC)},
+		{"negative month end clamp leap", time.Date(2024, 3, 31, 0, 0, 0, 0, time.UTC), -1, time.Date(2024, 2, 29, 0, 0, 0, 0, time.UTC)},
 	}
 
 	for _, tt := range tests {
