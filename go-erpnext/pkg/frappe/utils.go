@@ -133,18 +133,24 @@ func AddMonths(date time.Time, months int) time.Time {
 	y, m, d := date.Date()
 	loc := date.Location()
 
-	// Target month
-	targetMonth := time.Month((int(m)-1+months)%12 + 1)
-	targetYear := y + (int(m)-1+months)/12
-	if (int(m) - 1 + months) < 0 {
-		// Handle negative months
-		targetYear = y + (int(m)-1+months)/12
-		rem := (int(m) - 1 + months) % 12
+	// Target month and year — use separate paths for positive and negative
+	// offsets so the logic is explicit and not fragile.
+	var targetMonth time.Month
+	var targetYear int
+
+	offset := int(m) - 1 + months
+	if offset >= 0 {
+		targetMonth = time.Month(offset%12 + 1)
+		targetYear = y + offset/12
+	} else {
+		rem := offset % 12
 		if rem < 0 {
 			rem += 12
-			targetYear--
 		}
 		targetMonth = time.Month(rem + 1)
+		// Integer division in Go truncates toward zero, so for negative
+		// offsets we adjust by subtracting 1 when there is a remainder.
+		targetYear = y + (offset-rem)/12
 	}
 
 	// Last day of target month
