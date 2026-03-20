@@ -2,6 +2,7 @@ package queries
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/alex-baker-cdm/erpnext/go-erpnext/pkg/db"
@@ -305,8 +306,11 @@ func toFloat64(v interface{}) float64 {
 	case int64:
 		return float64(val)
 	case string:
-		f, _ := fmt.Sscanf(val, "%f")
-		return float64(f)
+		f, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return 0
+		}
+		return f
 	default:
 		return 0
 	}

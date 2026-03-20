@@ -179,10 +179,38 @@ func GetFiltersCond(filters map[string]interface{}, args *[]interface{}) string 
 }
 
 // MakeHandler wraps a query function into an http.HandlerFunc.
+// If dbConn is nil, handlers that require a database will return 503.
 func MakeHandler(dbConn *db.DB, fn func(*db.DB, http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if dbConn == nil {
+			WriteError(w, http.StatusServiceUnavailable, "database connection not configured")
+			return
+		}
 		fn(dbConn, w, r)
 	}
+}
+
+// validSQLOperators is the set of SQL operators allowed in user-supplied filters.
+var validSQLOperators = map[string]bool{
+	"=":      true,
+	"!=":     true,
+	"<":      true,
+	">":      true,
+	"<=":     true,
+	">=":     true,
+	"LIKE":   true,
+	"IN":     true,
+	"NOT IN": true,
+}
+
+// SanitizeOperator validates that an SQL operator is in the allowed set.
+// Returns the uppercased operator or an error if it is not allowed.
+func SanitizeOperator(op string) (string, error) {
+	normalized := strings.ToUpper(strings.TrimSpace(op))
+	if !validSQLOperators[normalized] {
+		return "", fmt.Errorf("invalid SQL operator: %q", op)
+	}
+	return normalized, nil
 }
 
 // ScanRows scans sql.Rows into a slice of string slices (tuple-like format).

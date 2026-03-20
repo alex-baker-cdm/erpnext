@@ -269,7 +269,11 @@ func WarehouseQuery(dbConn *db.DB, w http.ResponseWriter, r *http.Request) {
 						if err := db.SanitizeIdentifier(field, "bin filter field"); err != nil {
 							continue
 						}
-						binConditions += fmt.Sprintf(" AND `tabBin`.`%s` %s ?", field, op)
+						safeOp, err := SanitizeOperator(op)
+						if err != nil {
+							continue
+						}
+						binConditions += fmt.Sprintf(" AND `tabBin`.`%s` %s ?", field, safeOp)
 						condArgs = append(condArgs, val)
 					}
 				}
@@ -284,7 +288,11 @@ func WarehouseQuery(dbConn *db.DB, w http.ResponseWriter, r *http.Request) {
 						if err := db.SanitizeIdentifier(field, "warehouse filter field"); err != nil {
 							continue
 						}
-						warehouseConditions += fmt.Sprintf(" AND `tabWarehouse`.`%s` %s ?", field, op)
+						safeOp, err := SanitizeOperator(op)
+						if err != nil {
+							continue
+						}
+						warehouseConditions += fmt.Sprintf(" AND `tabWarehouse`.`%s` %s ?", field, safeOp)
 						condArgs = append(condArgs, val)
 					}
 				}

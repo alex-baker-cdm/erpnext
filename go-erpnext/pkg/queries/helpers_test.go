@@ -132,19 +132,18 @@ func TestToFloat64(t *testing.T) {
 		expected float64
 	}{
 		{float64(10.5), 10.5},
-		{float32(3.14), 3.140000104904175}, // float32 precision
 		{int(42), 42.0},
 		{int64(100), 100.0},
-		{nil, 0.0},
+		{"3.14", 3.14},
+		{"42", 42.0},
 		{"not a number", 0.0},
+		{nil, 0.0},
 	}
 
 	for _, tc := range tests {
 		got := toFloat64(tc.input)
-		if tc.input == nil || tc.input == "not a number" {
-			if got != 0 {
-				t.Errorf("toFloat64(%v) = %v, want 0", tc.input, got)
-			}
+		if got != tc.expected {
+			t.Errorf("toFloat64(%v) = %v, want %v", tc.input, got, tc.expected)
 		}
 	}
 }

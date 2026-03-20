@@ -85,7 +85,9 @@ func main() {
 	mux.HandleFunc("/api/method/erpnext.controllers.queries.item_manufacturer_query", queries.MakeHandler(dbConn, queries.ItemManufacturerQuery))
 	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_purchase_receipts", queries.MakeHandler(dbConn, queries.GetPurchaseReceipts))
 	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_purchase_invoices", queries.MakeHandler(dbConn, queries.GetPurchaseInvoices))
-	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_doctypes_for_closing", queries.MakeHandler(dbConn, queries.GetDoctypesForClosing))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_doctypes_for_closing", func(w http.ResponseWriter, r *http.Request) {
+		queries.GetDoctypesForClosing(nil, w, r) // No DB needed
+	})
 	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_payment_terms_for_references", queries.MakeHandler(dbConn, queries.GetPaymentTermsForReferences))
 	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_item_uom_query", queries.MakeHandler(dbConn, queries.GetItemUOMQuery))
 
