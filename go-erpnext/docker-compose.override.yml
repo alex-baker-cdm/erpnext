@@ -3,7 +3,6 @@
 # path below to point to the go-erpnext directory relative to frappe_docker.
 # Example:
 #   docker compose -f pwd.yml -f docker-compose.go-override.yml up -d
-version: "3"
 services:
   go-erpnext:
     build:
