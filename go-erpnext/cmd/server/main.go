@@ -9,6 +9,9 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/alex-baker-cdm/erpnext/go-erpnext/pkg/db"
+	"github.com/alex-baker-cdm/erpnext/go-erpnext/pkg/queries"
 )
 
 // loggingMiddleware wraps an http.Handler and logs each request with method, path, status, and duration.
@@ -53,9 +56,56 @@ func main() {
 		port = "8001"
 	}
 
+	// Initialize database connection (optional — handlers will return errors if DB is nil)
+	sitePath := os.Getenv("FRAPPE_SITE_PATH")
+	var dbConn *db.DB
+	if sitePath != "" {
+		cfg, err := db.ReadSiteConfig(sitePath)
+		if err != nil {
+			log.Printf("Warning: could not read site config: %v (DB-dependent routes will fail)", err)
+		} else {
+			dbConn, err = db.New(cfg)
+			if err != nil {
+				log.Printf("Warning: could not connect to database: %v (DB-dependent routes will fail)", err)
+			} else {
+				defer dbConn.Close()
+			}
+		}
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/method/go_erpnext.ping", pingHandler)
-	// Add more routes here as Go implementations are added
+
+	// Search query endpoints — Phase 2B
+	// Simple queries
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.employee_query", queries.MakeHandler(dbConn, queries.EmployeeQuery))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.lead_query", queries.MakeHandler(dbConn, queries.LeadQuery))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.bom", queries.MakeHandler(dbConn, queries.BOMQuery))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_batch_numbers", queries.MakeHandler(dbConn, queries.GetBatchNumbers))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.item_manufacturer_query", queries.MakeHandler(dbConn, queries.ItemManufacturerQuery))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_purchase_receipts", queries.MakeHandler(dbConn, queries.GetPurchaseReceipts))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_purchase_invoices", queries.MakeHandler(dbConn, queries.GetPurchaseInvoices))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_doctypes_for_closing", queries.MakeHandler(dbConn, queries.GetDoctypesForClosing))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_payment_terms_for_references", queries.MakeHandler(dbConn, queries.GetPaymentTermsForReferences))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_item_uom_query", queries.MakeHandler(dbConn, queries.GetItemUOMQuery))
+
+	// Account queries
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.tax_account_query", queries.MakeHandler(dbConn, queries.TaxAccountQuery))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_account_list", queries.MakeHandler(dbConn, queries.GetAccountList))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_income_account", queries.MakeHandler(dbConn, queries.GetIncomeAccount))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_expense_account", queries.MakeHandler(dbConn, queries.GetExpenseAccount))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_blanket_orders", queries.MakeHandler(dbConn, queries.GetBlanketOrders))
+
+	// Complex queries
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.item_query", queries.MakeHandler(dbConn, queries.ItemQuery))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_batch_no", queries.MakeHandler(dbConn, queries.GetBatchNo))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.warehouse_query", queries.MakeHandler(dbConn, queries.WarehouseQuery))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_tax_template", queries.MakeHandler(dbConn, queries.GetTaxTemplate))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_filtered_dimensions", queries.MakeHandler(dbConn, queries.GetFilteredDimensions))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_filtered_child_rows", queries.MakeHandler(dbConn, queries.GetFilteredChildRows))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_project_name", queries.MakeHandler(dbConn, queries.GetProjectName))
+	mux.HandleFunc("/api/method/erpnext.controllers.queries.get_delivery_notes_to_be_billed", queries.MakeHandler(dbConn, queries.GetDeliveryNotesToBeBilled))
+
 	mux.HandleFunc("/", catchAllHandler)
 
 	handler := loggingMiddleware(mux)

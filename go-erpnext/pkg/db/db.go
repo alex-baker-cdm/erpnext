@@ -170,6 +170,38 @@ type ListOptions struct {
 	Limit   int
 }
 
+// RawQuery executes an arbitrary SQL query with parameterized arguments.
+// Returns the result rows. The caller is responsible for closing the rows.
+func (d *DB) RawQuery(query string, args ...interface{}) (*sql.Rows, error) {
+	return d.conn.Query(query, args...)
+}
+
+// RawQueryRow executes a query that is expected to return at most one row.
+func (d *DB) RawQueryRow(query string, args ...interface{}) *sql.Row {
+	return d.conn.QueryRow(query, args...)
+}
+
+// EstimateCount returns an estimated row count for the given doctype table.
+// Uses COUNT(*) for accuracy (matching frappe.db.estimate_count behavior for MariaDB).
+func (d *DB) EstimateCount(doctype string) (int64, error) {
+	if err := sanitizeIdentifier(doctype, "doctype"); err != nil {
+		return 0, err
+	}
+	var count int64
+	query := fmt.Sprintf("SELECT COUNT(*) FROM %s", tableName(doctype))
+	err := d.conn.QueryRow(query).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("estimating count for %s: %w", doctype, err)
+	}
+	return count, nil
+}
+
+// SanitizeIdentifier validates that a string is a safe SQL identifier.
+// This is the exported version of sanitizeIdentifier for use by other packages.
+func SanitizeIdentifier(name, context string) error {
+	return sanitizeIdentifier(name, context)
+}
+
 // GetList retrieves a list of documents matching the given criteria.
 // Equivalent to frappe.get_list(doctype, filters, fields, order_by, limit).
 func (d *DB) GetList(doctype string, opts ListOptions) ([]map[string]interface{}, error) {
