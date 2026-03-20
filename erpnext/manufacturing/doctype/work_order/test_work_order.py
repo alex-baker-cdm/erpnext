@@ -3806,6 +3806,125 @@ class TestWorkOrder(ERPNextTestSuite):
 
 		self.assertEqual(bin1_at_completion.reserved_qty_for_production, 0)
 
+	def test_manufacture_entry_respects_wo_edited_items(self):
+		"""Test that Manufacture Stock Entry sources items from WO required_items
+		when allow_editing_of_items_and_quantities_in_work_order is enabled."""
+		from erpnext.stock.doctype.stock_entry.test_stock_entry import (
+			make_stock_entry as make_stock_entry_test_record,
+		)
+
+		# Save original settings to restore later
+		original_backflush = frappe.db.get_single_value(
+			"Manufacturing Settings", "backflush_raw_materials_based_on"
+		)
+		original_material_consumption = frappe.db.get_single_value(
+			"Manufacturing Settings", "material_consumption"
+		)
+		original_allow_editing = frappe.db.get_single_value(
+			"Manufacturing Settings", "allow_editing_of_items_and_quantities_in_work_order"
+		)
+
+		# Configure settings to hit the else branch: BOM-based backflush, no material consumption
+		frappe.db.set_single_value("Manufacturing Settings", "backflush_raw_materials_based_on", "BOM")
+		frappe.db.set_single_value("Manufacturing Settings", "material_consumption", 0)
+		frappe.db.set_single_value(
+			"Manufacturing Settings", "allow_editing_of_items_and_quantities_in_work_order", 1
+		)
+
+		fg_item = "Test FG Item For WO Edit"
+		rm_item_1 = "Test WO Edit RM Item 1"
+		rm_item_2 = "Test WO Edit RM Item 2"
+		rm_item_3 = "Test WO Edit RM Item 3"
+		source_warehouse = "_Test Warehouse - _TC"
+
+		make_item(fg_item, {"is_stock_item": 1})
+		for item in [rm_item_1, rm_item_2, rm_item_3]:
+			make_item(item, {"is_stock_item": 1})
+			make_stock_entry_test_record(
+				item_code=item,
+				target=source_warehouse,
+				qty=100,
+				basic_rate=100,
+			)
+
+		# Create BOM with rm_item_1 and rm_item_2 (qty 1 each per unit of FG)
+		make_bom(
+			item=fg_item,
+			source_warehouse=source_warehouse,
+			raw_materials=[rm_item_1, rm_item_2],
+		)
+
+		# Create Work Order for qty 10
+		wo = make_wo_order_test_record(
+			item=fg_item,
+			qty=10,
+			source_warehouse=source_warehouse,
+			skip_transfer=1,
+		)
+
+		# Modify required_items on the WO: change qty of rm_item_1, remove rm_item_2, add rm_item_3
+		wo.required_items = []
+		wo.append(
+			"required_items",
+			{
+				"item_code": rm_item_1,
+				"item_name": rm_item_1,
+				"source_warehouse": source_warehouse,
+				"required_qty": 20,
+				"include_item_in_manufacturing": 1,
+			},
+		)
+		wo.append(
+			"required_items",
+			{
+				"item_code": rm_item_3,
+				"item_name": rm_item_3,
+				"source_warehouse": source_warehouse,
+				"required_qty": 30,
+				"include_item_in_manufacturing": 1,
+			},
+		)
+		wo.save()
+
+		# Verify WO items were preserved (not reset by BOM)
+		wo.reload()
+		wo_item_codes = [d.item_code for d in wo.required_items]
+		self.assertIn(rm_item_1, wo_item_codes)
+		self.assertIn(rm_item_3, wo_item_codes)
+		self.assertNotIn(rm_item_2, wo_item_codes)
+
+		# Create Manufacture Stock Entry for full qty
+		manufacture_entry = frappe.get_doc(make_stock_entry(wo.name, "Manufacture", 10))
+
+		# Verify items come from WO, not BOM
+		se_items = {row.item_code: row for row in manufacture_entry.items if row.s_warehouse}
+		self.assertIn(rm_item_1, se_items)
+		self.assertIn(rm_item_3, se_items)
+		self.assertNotIn(rm_item_2, se_items)
+
+		# Verify quantities are scaled proportionally: (required_qty / wo.qty) * fg_completed_qty
+		self.assertEqual(flt(se_items[rm_item_1].qty), flt(20.0 / 10 * 10))  # 20.0
+		self.assertEqual(flt(se_items[rm_item_3].qty), flt(30.0 / 10 * 10))  # 30.0
+
+		# Test partial manufacture (5 out of 10)
+		manufacture_entry_partial = frappe.get_doc(make_stock_entry(wo.name, "Manufacture", 5))
+		se_items_partial = {
+			row.item_code: row for row in manufacture_entry_partial.items if row.s_warehouse
+		}
+		self.assertEqual(flt(se_items_partial[rm_item_1].qty), flt(20.0 / 10 * 5))  # 10.0
+		self.assertEqual(flt(se_items_partial[rm_item_3].qty), flt(30.0 / 10 * 5))  # 15.0
+
+		# Restore original settings
+		frappe.db.set_single_value(
+			"Manufacturing Settings", "backflush_raw_materials_based_on", original_backflush
+		)
+		frappe.db.set_single_value("Manufacturing Settings", "material_consumption", original_material_consumption)
+		frappe.db.set_single_value(
+			"Manufacturing Settings",
+			"allow_editing_of_items_and_quantities_in_work_order",
+			original_allow_editing,
+		)
+
 
 def get_reserved_entries(voucher_no, warehouse=None):
 	doctype = frappe.qb.DocType("Stock Reservation Entry")
