@@ -973,6 +973,12 @@ class StockEntry(StockController, SubcontractingInwardController):
 		if not self.fg_completed_qty:
 			return
 
+		# When editing of WO items is allowed, the WO is the source of truth, not the BOM
+		if self.work_order and frappe.db.get_single_value(
+			"Manufacturing Settings", "allow_editing_of_items_and_quantities_in_work_order"
+		):
+			return
+
 		raw_materials = self.get_bom_raw_materials(self.fg_completed_qty)
 
 		precision = frappe.get_precision("Stock Entry Detail", "qty")
@@ -2396,7 +2402,17 @@ class StockEntry(StockController, SubcontractingInwardController):
 					if not self.fg_completed_qty:
 						frappe.throw(_("Manufacturing Quantity is mandatory"))
 
-					item_dict = self.get_bom_raw_materials(self.fg_completed_qty)
+					if (
+						self.work_order
+						and self.purpose == "Manufacture"
+						and frappe.db.get_single_value(
+							"Manufacturing Settings",
+							"allow_editing_of_items_and_quantities_in_work_order",
+						)
+					):
+						item_dict = self.get_wo_raw_materials(self.fg_completed_qty)
+					else:
+						item_dict = self.get_bom_raw_materials(self.fg_completed_qty)
 
 					# Get Subcontract Order Supplied Items Details
 					if (
@@ -2790,6 +2806,45 @@ class StockEntry(StockController, SubcontractingInwardController):
 				item.uom = alternative_item_data.uom
 				item.conversion_factor = alternative_item_data.conversion_factor
 				item.description = alternative_item_data.description
+
+		return item_dict
+
+	def get_wo_raw_materials(self, qty):
+		"""Get raw materials from Work Order's required_items instead of BOM.
+
+		Used when allow_editing_of_items_and_quantities_in_work_order is enabled,
+		so that user modifications to the WO's required_items are respected.
+		"""
+		work_order = frappe.get_doc("Work Order", self.work_order)
+		item_dict = frappe._dict()
+
+		skip_transfer = work_order.skip_transfer
+		from_wip_warehouse = work_order.from_wip_warehouse
+
+		for d in work_order.get("required_items"):
+			if not d.include_item_in_manufacturing:
+				continue
+
+			item_row = frappe._dict(
+				{
+					"item_code": d.item_code,
+					"item_name": d.item_name,
+					"description": d.description,
+					"stock_uom": d.stock_uom,
+					"uom": d.stock_uom,
+					"conversion_factor": 1,
+					"qty": flt(d.required_qty) / flt(work_order.qty) * flt(qty),
+					"from_warehouse": (
+						d.source_warehouse
+						if skip_transfer and not from_wip_warehouse
+						else self.from_warehouse or d.source_warehouse
+					),
+					"to_warehouse": "",
+					"allow_alternative_item": work_order.allow_alternative_item if d.allow_alternative_item else 0,
+				}
+			)
+
+			item_dict.setdefault(d.item_code, item_row)
 
 		return item_dict
 
