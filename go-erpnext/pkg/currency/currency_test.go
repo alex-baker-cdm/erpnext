@@ -107,6 +107,56 @@ func TestGetPeggedRate_OnlyOneEntry_NoMatch(t *testing.T) {
 	}
 }
 
+func TestGetPeggedRate_ZeroRatio_FromEntry_SameBase(t *testing.T) {
+	pm := PeggedMap{
+		"AED": {PeggedAgainst: "USD", Ratio: 0},
+		"SAR": {PeggedAgainst: "USD", Ratio: 3.75},
+	}
+	result := GetPeggedRate(pm, "AED", "SAR", nil)
+	if result != nil {
+		t.Errorf("expected nil when fromEntry.Ratio is 0, got %f", *result)
+	}
+}
+
+func TestGetPeggedRate_ZeroRatio_ToEntry_Case4(t *testing.T) {
+	pm := PeggedMap{
+		"AED": {PeggedAgainst: "USD", Ratio: 0},
+	}
+	result := GetPeggedRate(pm, "USD", "AED", nil)
+	if result != nil {
+		t.Errorf("expected nil when toEntry.Ratio is 0, got %f", *result)
+	}
+}
+
+func TestGetPeggedRate_ZeroRatio_BothZero(t *testing.T) {
+	pm := PeggedMap{
+		"AED": {PeggedAgainst: "USD", Ratio: 0},
+		"SAR": {PeggedAgainst: "USD", Ratio: 0},
+	}
+	result := GetPeggedRate(pm, "AED", "SAR", nil)
+	if result != nil {
+		t.Errorf("expected nil when both ratios are 0, got %f", *result)
+	}
+}
+
+func TestGetPeggedRate_ZeroRatio_FromEntry_DifferentBases(t *testing.T) {
+	pm := PeggedMap{
+		"AED": {PeggedAgainst: "USD", Ratio: 0},
+		"HKD": {PeggedAgainst: "EUR", Ratio: 8.5},
+	}
+	baseRate := 0.85
+	fn := func(from, to string) *float64 {
+		if from == "USD" && to == "EUR" {
+			return &baseRate
+		}
+		return nil
+	}
+	result := GetPeggedRate(pm, "AED", "HKD", fn)
+	if result != nil {
+		t.Errorf("expected nil when fromEntry.Ratio is 0 (different bases), got %f", *result)
+	}
+}
+
 func TestGetPeggedRate_EdgeCase_RatioOne(t *testing.T) {
 	pm := PeggedMap{
 		"BSD": {PeggedAgainst: "USD", Ratio: 1.0},
