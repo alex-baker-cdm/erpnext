@@ -90,6 +90,14 @@ func (d *DB) Close() error {
 	return d.conn.Close()
 }
 
+// Query executes a raw SQL query with the given arguments and returns the resulting rows.
+// Callers are responsible for closing the returned *sql.Rows.
+// Table and column names in the query must already be safe (use sanitizeIdentifier
+// or backtick-quoted literals); all values must be passed as args (parameterised).
+func (d *DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	return d.conn.Query(query, args...)
+}
+
 // tableName converts a doctype name to its MariaDB table name.
 // e.g., "Foo Bar" -> "`tabFoo Bar`"
 func tableName(doctype string) string {
