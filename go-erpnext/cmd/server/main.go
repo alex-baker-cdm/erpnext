@@ -9,6 +9,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/alex-baker-cdm/erpnext/go-erpnext/pkg/reports"
 )
 
 // loggingMiddleware wraps an http.Handler and logs each request with method, path, status, and duration.
@@ -55,6 +57,9 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/method/go_erpnext.ping", pingHandler)
+	// Register Tier 2 reports (passing nil DB for now; wire real DB when available)
+	reports.RegisterTier2Reports(nil)
+	mux.HandleFunc("/api/method/frappe.desk.query_report.run", reports.RunReportHandler(nil))
 	// Add more routes here as Go implementations are added
 	mux.HandleFunc("/", catchAllHandler)
 
