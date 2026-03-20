@@ -57,6 +57,8 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/method/go_erpnext.ping", pingHandler)
+	// Register all reports (nil DB for now; replace with real DB connection when available)
+	reports.RegisterAllReports(nil)
 	mux.HandleFunc("/api/method/frappe.desk.query_report.run", reports.RunReportHandler(nil))
 	// Add more routes here as Go implementations are added
 	mux.HandleFunc("/", catchAllHandler)
