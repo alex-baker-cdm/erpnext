@@ -299,6 +299,62 @@ func TestLIFO_ConsumptionMultiple(t *testing.T) {
 }
 
 // =====================
+// Edge-case tests: zero-qty bins & near-zero remainders
+// =====================
+
+func TestFIFO_RemoveStock_ZeroQtyBin(t *testing.T) {
+	// A queue that contains a zero-quantity bin must not cause an infinite loop.
+	q := NewFIFOValuation([]StockBin{{0, 50}, {5, 100}})
+	consumed := q.RemoveStock(3, 0, nil, false)
+	assertConsumed(t, consumed, []StockBin{{3, 100}})
+	assertState(t, q.State(), []StockBin{{2, 100}})
+}
+
+func TestFIFO_RemoveStock_OnlyZeroQtyBin(t *testing.T) {
+	// Queue has only a zero-qty bin; rateGenerator provides the fallback rate.
+	// Should go negative without looping forever.
+	q := NewFIFOValuation([]StockBin{{0, 50}})
+	consumed := q.RemoveStock(2, 10, func() float64 { return 10.0 }, false)
+	// The zero-qty bin is skipped, queue becomes empty, rateGenerator adds {0,10},
+	// that is also skipped, then negative-stock path fires.
+	assertTotalQty(t, q.State(), -2)
+	_ = consumed
+}
+
+func TestFIFO_RemoveStock_NearZeroRemainder(t *testing.T) {
+	// After consuming, a floating-point residual near zero should terminate.
+	q := NewFIFOValuation(nil)
+	q.AddStock(1.0, 10)
+	// Remove slightly less than 1 so the remainder is ~1e-9 (near zero).
+	q.RemoveStock(1.0-1e-9, 0, nil, false)
+	assertTotalQty(t, q.State(), 0)
+}
+
+func TestLIFO_RemoveStock_ZeroQtyBin(t *testing.T) {
+	// A stack that contains a zero-quantity bin at the top must not infinite-loop.
+	s := NewLIFOValuation([]StockBin{{5, 100}, {0, 50}})
+	consumed := s.RemoveStock(3, 0, nil, false)
+	assertConsumed(t, consumed, []StockBin{{3, 100}})
+	assertState(t, s.State(), []StockBin{{2, 100}})
+}
+
+func TestLIFO_RemoveStock_OnlyZeroQtyBin(t *testing.T) {
+	// Stack has only a zero-qty bin; should go negative without looping.
+	s := NewLIFOValuation([]StockBin{{0, 50}})
+	consumed := s.RemoveStock(2, 10, func() float64 { return 10.0 }, false)
+	assertTotalQty(t, s.State(), -2)
+	_ = consumed
+}
+
+func TestLIFO_RemoveStock_NearZeroRemainder(t *testing.T) {
+	// After consuming, a floating-point residual near zero should terminate.
+	s := NewLIFOValuation(nil)
+	s.AddStock(1.0, 10)
+	s.RemoveStock(1.0-1e-9, 0, nil, false)
+	assertTotalQty(t, s.State(), 0)
+}
+
+// =====================
 // Property-based tests (rapid)
 // =====================
 
