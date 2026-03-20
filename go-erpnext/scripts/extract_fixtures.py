@@ -318,9 +318,182 @@ def extract_payment_term_fixtures(output_dir: Path):
     print(f"Wrote {len(fixtures)} payment term fixtures to {output_path}")
 
 
+def extract_stock_balance_fixtures(output_dir: Path):
+    """Extract stock balance fixtures from ERPNext.
+
+    Calls get_stock_balance() and get_previous_sle() with various parameters
+    and captures the outputs for Go test harness consumption.
+    """
+    try:
+        from erpnext.stock.utils import get_stock_balance
+    except ImportError:
+        print(
+            "ERROR: Could not import ERPNext stock utils. "
+            "Make sure you are running this inside the ERPNext container.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    import frappe
+
+    fixtures = []
+
+    # Basic stock balance query (no stock, should return 0)
+    try:
+        result = get_stock_balance("_Test Item", "_Test Warehouse - _TC", "2024-01-01", "00:00:00")
+        fixtures.append(
+            {
+                "name": "basic_stock_balance",
+                "input": {
+                    "item_code": "_Test Item",
+                    "warehouse": "_Test Warehouse - _TC",
+                    "posting_date": "2024-01-01",
+                    "posting_time": "00:00:00",
+                    "with_valuation_rate": False,
+                },
+                "expected": {"result": result},
+            }
+        )
+    except Exception as e:
+        print(f"  Skipping basic_stock_balance: {e}")
+
+    # Stock balance with valuation rate
+    try:
+        result = get_stock_balance(
+            "_Test Item", "_Test Warehouse - _TC", "2024-01-01", "00:00:00",
+            with_valuation_rate=True,
+        )
+        fixtures.append(
+            {
+                "name": "stock_balance_with_valuation",
+                "input": {
+                    "item_code": "_Test Item",
+                    "warehouse": "_Test Warehouse - _TC",
+                    "posting_date": "2024-01-01",
+                    "posting_time": "00:00:00",
+                    "with_valuation_rate": True,
+                },
+                "expected": {"result": list(result) if isinstance(result, tuple) else result},
+            }
+        )
+    except Exception as e:
+        print(f"  Skipping stock_balance_with_valuation: {e}")
+
+    fixture_file = {
+        "module": "stock.utils",
+        "function": "get_stock_balance",
+        "fixtures": fixtures,
+    }
+    output_path = output_dir / "stock_balance.json"
+    output_path.write_text(json.dumps(fixture_file, indent=4) + "\n")
+    print(f"Wrote {len(fixtures)} stock balance fixtures to {output_path}")
+
+
+def extract_stock_value_fixtures(output_dir: Path):
+    """Extract stock value fixtures from ERPNext."""
+    try:
+        from erpnext.stock.utils import get_stock_value_on
+    except ImportError:
+        print(
+            "ERROR: Could not import ERPNext stock utils. "
+            "Make sure you are running this inside the ERPNext container.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    fixtures = []
+
+    try:
+        result = get_stock_value_on(
+            warehouses="_Test Warehouse - _TC",
+            posting_date="2024-01-01",
+            item_code="_Test Item",
+        )
+        fixtures.append(
+            {
+                "name": "basic_stock_value",
+                "input": {
+                    "warehouses": ["_Test Warehouse - _TC"],
+                    "posting_date": "2024-01-01",
+                    "item_code": "_Test Item",
+                },
+                "expected": {"result": float(result)},
+            }
+        )
+    except Exception as e:
+        print(f"  Skipping basic_stock_value: {e}")
+
+    fixture_file = {
+        "module": "stock.utils",
+        "function": "get_stock_value_on",
+        "fixtures": fixtures,
+    }
+    output_path = output_dir / "stock_value.json"
+    output_path.write_text(json.dumps(fixture_file, indent=4) + "\n")
+    print(f"Wrote {len(fixtures)} stock value fixtures to {output_path}")
+
+
+def extract_latest_stock_qty_fixtures(output_dir: Path):
+    """Extract latest stock qty fixtures from ERPNext."""
+    try:
+        from erpnext.stock.utils import get_latest_stock_qty
+    except ImportError:
+        print(
+            "ERROR: Could not import ERPNext stock utils. "
+            "Make sure you are running this inside the ERPNext container.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    fixtures = []
+
+    try:
+        result = get_latest_stock_qty("_Test Item", "_Test Warehouse - _TC")
+        fixtures.append(
+            {
+                "name": "basic_latest_qty",
+                "input": {
+                    "item_code": "_Test Item",
+                    "warehouse": "_Test Warehouse - _TC",
+                },
+                "expected": {"result": float(result) if result else 0.0},
+            }
+        )
+    except Exception as e:
+        print(f"  Skipping basic_latest_qty: {e}")
+
+    # Without warehouse
+    try:
+        result = get_latest_stock_qty("_Test Item")
+        fixtures.append(
+            {
+                "name": "latest_qty_no_warehouse",
+                "input": {
+                    "item_code": "_Test Item",
+                    "warehouse": "",
+                },
+                "expected": {"result": float(result) if result else 0.0},
+            }
+        )
+    except Exception as e:
+        print(f"  Skipping latest_qty_no_warehouse: {e}")
+
+    fixture_file = {
+        "module": "stock.utils",
+        "function": "get_latest_stock_qty",
+        "fixtures": fixtures,
+    }
+    output_path = output_dir / "latest_stock_qty.json"
+    output_path.write_text(json.dumps(fixture_file, indent=4) + "\n")
+    print(f"Wrote {len(fixtures)} latest stock qty fixtures to {output_path}")
+
+
 EXTRACTORS = {
     "valuation": extract_valuation_fixtures,
     "payment_terms": extract_payment_term_fixtures,
+    "stock_balance": extract_stock_balance_fixtures,
+    "stock_value": extract_stock_value_fixtures,
+    "latest_stock_qty": extract_latest_stock_qty_fixtures,
 }
 
 

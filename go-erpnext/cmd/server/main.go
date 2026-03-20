@@ -9,6 +9,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/alex-baker-cdm/erpnext/go-erpnext/pkg/db"
 )
 
 // loggingMiddleware wraps an http.Handler and logs each request with method, path, status, and duration.
@@ -53,9 +55,47 @@ func main() {
 		port = "8001"
 	}
 
+	// Initialize database connection from Frappe site config.
+	sitePath := os.Getenv("FRAPPE_SITE_PATH")
+	if sitePath == "" {
+		sitePath = "/home/frappe/frappe-bench/sites/frontend"
+	}
+
+	var database *db.DB
+
+	cfg, err := db.ReadSiteConfig(sitePath)
+	if err != nil {
+		log.Printf("WARNING: Could not read site config from %s: %v (running without DB)", sitePath, err)
+	} else {
+		database, err = db.New(cfg)
+		if err != nil {
+			log.Printf("WARNING: Could not connect to database: %v (running without DB)", err)
+		} else {
+			defer database.Close()
+			log.Printf("Connected to database %s@%s:%d/%s", cfg.DBUser, cfg.DBHost, cfg.DBPort, cfg.DBName)
+		}
+	}
+
 	mux := http.NewServeMux()
+
+	// Health check - no auth required
 	mux.HandleFunc("/api/method/go_erpnext.ping", pingHandler)
-	// Add more routes here as Go implementations are added
+
+	// Stock query endpoints - auth required
+	if database != nil {
+		auth := authMiddleware(database)
+
+		mux.Handle("/api/method/erpnext.stock.utils.get_stock_balance",
+			auth(http.HandlerFunc(stockBalanceHandler(database))))
+		mux.Handle("/api/method/erpnext.stock.utils.get_latest_stock_qty",
+			auth(http.HandlerFunc(stockQtyHandler(database))))
+		mux.Handle("/api/method/erpnext.stock.get_item_details.get_valuation_rate",
+			auth(http.HandlerFunc(valuationRateHandler(database))))
+		mux.Handle("/api/method/erpnext.stock.doctype.quick_stock_balance.quick_stock_balance.get_stock_item_details",
+			auth(http.HandlerFunc(stockItemHandler(database))))
+	}
+
+	// Catch-all for unimplemented routes
 	mux.HandleFunc("/", catchAllHandler)
 
 	handler := loggingMiddleware(mux)
