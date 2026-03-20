@@ -15,6 +15,10 @@ func TestFlt(t *testing.T) {
 		{"zero", 0.0, 2, 0.0},
 		{"positive round", 1.2345, 2, 1.23},
 		{"positive round up", 1.2355, 2, 1.24},
+		{"bankers rounding half-even down", 0.5, 0, 0.0},
+		{"bankers rounding half-even up", 1.5, 0, 2.0},
+		{"bankers rounding 2.5", 2.5, 0, 2.0},
+		{"bankers rounding 3.5", 3.5, 0, 4.0},
 		{"negative precision", 1.2345, -1, 1.2345},
 		{"large precision", 1.23456789, 6, 1.234568},
 		{"negative value", -1.2345, 2, -1.23},
@@ -119,8 +123,12 @@ func TestAddMonths(t *testing.T) {
 		expected time.Time
 	}{
 		{"add 1 month", time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC), 1, time.Date(2024, 2, 15, 0, 0, 0, 0, time.UTC)},
-		{"month end clamp", time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC), 1, time.Date(2024, 3, 2, 0, 0, 0, 0, time.UTC)},
+		{"month end clamp leap", time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC), 1, time.Date(2024, 2, 29, 0, 0, 0, 0, time.UTC)},
+		{"month end clamp non-leap", time.Date(2023, 1, 31, 0, 0, 0, 0, time.UTC), 1, time.Date(2023, 2, 28, 0, 0, 0, 0, time.UTC)},
 		{"add 12 months", time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC), 12, time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)},
+		{"31 to 30-day month", time.Date(2024, 3, 31, 0, 0, 0, 0, time.UTC), 1, time.Date(2024, 4, 30, 0, 0, 0, 0, time.UTC)},
+		{"negative months", time.Date(2024, 3, 31, 0, 0, 0, 0, time.UTC), -1, time.Date(2024, 2, 29, 0, 0, 0, 0, time.UTC)},
+		{"no clamp needed", time.Date(2024, 1, 28, 0, 0, 0, 0, time.UTC), 1, time.Date(2024, 2, 28, 0, 0, 0, 0, time.UTC)},
 	}
 
 	for _, tt := range tests {

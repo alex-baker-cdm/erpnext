@@ -230,7 +230,12 @@ def extract_valuation_fixtures(output_dir: Path):
 
 
 def extract_payment_term_fixtures(output_dir: Path):
-    """Extract payment term due-date fixtures from ERPNext."""
+    """Extract payment term due-date fixtures from ERPNext.
+
+    The actual get_due_date(term, posting_date, bill_date) function expects
+    a term object with attributes like due_date_based_on, credit_days, etc.
+    We use a SimpleNamespace to build lightweight term objects.
+    """
     try:
         from erpnext.controllers.accounts_controller import get_due_date
     except ImportError:
@@ -242,17 +247,17 @@ def extract_payment_term_fixtures(output_dir: Path):
         sys.exit(1)
 
     import datetime
+    from types import SimpleNamespace
 
     fixtures = []
 
     # days_after_invoice
-    result = get_due_date(
-        posting_date=datetime.date(2024, 1, 15),
-        payment_terms_template=None,
-        bill_date=None,
+    term = SimpleNamespace(
         due_date_based_on="Day(s) after invoice date",
         credit_days=30,
+        credit_months=0,
     )
+    result = get_due_date(term, posting_date=datetime.date(2024, 1, 15), bill_date=None)
     fixtures.append(
         {
             "name": "days_after_invoice",
@@ -266,13 +271,12 @@ def extract_payment_term_fixtures(output_dir: Path):
     )
 
     # days_after_end_of_month
-    result = get_due_date(
-        posting_date=datetime.date(2024, 1, 15),
-        payment_terms_template=None,
-        bill_date=None,
+    term = SimpleNamespace(
         due_date_based_on="Day(s) after the end of the invoice month",
         credit_days=15,
+        credit_months=0,
     )
+    result = get_due_date(term, posting_date=datetime.date(2024, 1, 15), bill_date=None)
     fixtures.append(
         {
             "name": "days_after_end_of_month",
@@ -286,13 +290,12 @@ def extract_payment_term_fixtures(output_dir: Path):
     )
 
     # months_after_end_of_month
-    result = get_due_date(
-        posting_date=datetime.date(2024, 1, 15),
-        payment_terms_template=None,
-        bill_date=None,
+    term = SimpleNamespace(
         due_date_based_on="Month(s) after the end of the invoice month",
+        credit_days=0,
         credit_months=2,
     )
+    result = get_due_date(term, posting_date=datetime.date(2024, 1, 15), bill_date=None)
     fixtures.append(
         {
             "name": "months_after_end_of_month",

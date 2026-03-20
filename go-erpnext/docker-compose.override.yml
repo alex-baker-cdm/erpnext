@@ -1,11 +1,15 @@
 # Reference: How to add the Go service to ERPNext's Docker Compose
-# Copy this to your frappe_docker directory and use:
+# Copy this file to your frappe_docker directory, then adjust the context
+# path below to point to the go-erpnext directory relative to frappe_docker.
+# Example:
 #   docker compose -f pwd.yml -f docker-compose.go-override.yml up -d
 version: "3"
 services:
   go-erpnext:
     build:
-      context: ../repos/erpnext/go-erpnext
+      # Adjust this path relative to your frappe_docker directory.
+      # e.g. if erpnext repo is at ../erpnext:
+      context: ../erpnext/go-erpnext
       dockerfile: Dockerfile
     ports:
       - "8001:8001"

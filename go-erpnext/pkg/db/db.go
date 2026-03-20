@@ -9,10 +9,23 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
 )
+
+// validIdentifier matches safe SQL identifiers (alphanumeric, underscores, spaces for Frappe doctypes).
+var validIdentifier = regexp.MustCompile(`^[a-zA-Z0-9_ ]+$`)
+
+// sanitizeIdentifier validates that a string is a safe SQL identifier.
+// Returns an error if the identifier contains characters that could enable SQL injection.
+func sanitizeIdentifier(name, context string) error {
+	if !validIdentifier.MatchString(name) {
+		return fmt.Errorf("invalid %s identifier: %q", context, name)
+	}
+	return nil
+}
 
 // SiteConfig represents the database configuration from Frappe's site_config.json.
 type SiteConfig struct {
@@ -86,6 +99,9 @@ func tableName(doctype string) string {
 // GetDoc retrieves a single document by doctype and name.
 // Returns a map of field names to values (equivalent to frappe.get_doc).
 func (d *DB) GetDoc(doctype, name string) (map[string]interface{}, error) {
+	if err := sanitizeIdentifier(doctype, "doctype"); err != nil {
+		return nil, err
+	}
 	query := fmt.Sprintf("SELECT * FROM %s WHERE name = ? LIMIT 1", tableName(doctype))
 	rows, err := d.conn.Query(query, name)
 	if err != nil {
@@ -128,6 +144,12 @@ func (d *DB) GetDoc(doctype, name string) (map[string]interface{}, error) {
 // GetValue retrieves a single field value from a document.
 // Equivalent to frappe.get_value(doctype, name, fieldname).
 func (d *DB) GetValue(doctype, name, fieldname string) (interface{}, error) {
+	if err := sanitizeIdentifier(doctype, "doctype"); err != nil {
+		return nil, err
+	}
+	if err := sanitizeIdentifier(fieldname, "fieldname"); err != nil {
+		return nil, err
+	}
 	query := fmt.Sprintf("SELECT `%s` FROM %s WHERE name = ? LIMIT 1", fieldname, tableName(doctype))
 	var value interface{}
 	err := d.conn.QueryRow(query, name).Scan(&value)
@@ -151,10 +173,17 @@ type ListOptions struct {
 // GetList retrieves a list of documents matching the given criteria.
 // Equivalent to frappe.get_list(doctype, filters, fields, order_by, limit).
 func (d *DB) GetList(doctype string, opts ListOptions) ([]map[string]interface{}, error) {
+	if err := sanitizeIdentifier(doctype, "doctype"); err != nil {
+		return nil, err
+	}
+
 	fields := "*"
 	if len(opts.Fields) > 0 {
 		quotedFields := make([]string, len(opts.Fields))
 		for i, f := range opts.Fields {
+			if err := sanitizeIdentifier(f, "field"); err != nil {
+				return nil, err
+			}
 			quotedFields[i] = fmt.Sprintf("`%s`", f)
 		}
 		fields = strings.Join(quotedFields, ", ")
@@ -166,6 +195,9 @@ func (d *DB) GetList(doctype string, opts ListOptions) ([]map[string]interface{}
 	if len(opts.Filters) > 0 {
 		var conditions []string
 		for field, value := range opts.Filters {
+			if err := sanitizeIdentifier(field, "filter field"); err != nil {
+				return nil, err
+			}
 			conditions = append(conditions, fmt.Sprintf("`%s` = ?", field))
 			args = append(args, value)
 		}

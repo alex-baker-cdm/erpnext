@@ -75,7 +75,7 @@ func TestFIFO_SimpleAddition(t *testing.T) {
 func TestFIFO_SimpleRemoval(t *testing.T) {
 	q := NewFIFOValuation(nil)
 	q.AddStock(1, 10)
-	q.RemoveStock(1, 0, nil)
+	q.RemoveStock(1, 0, nil, false)
 	assertTotalQty(t, q.State(), 0)
 }
 
@@ -100,10 +100,10 @@ func TestFIFO_AddingNegativeStockUpdatesRate(t *testing.T) {
 
 func TestFIFO_NegativeStock(t *testing.T) {
 	q := NewFIFOValuation(nil)
-	q.RemoveStock(1, 5, nil)
+	q.RemoveStock(1, 5, nil, false)
 	assertState(t, q.State(), []StockBin{{-1, 5}})
 
-	q.RemoveStock(1, 0, nil)
+	q.RemoveStock(1, 0, nil, false)
 	assertTotalQty(t, q.State(), -2)
 	assertState(t, q.State(), []StockBin{{-2, 5}})
 
@@ -117,7 +117,7 @@ func TestFIFO_RemovingSpecifiedRate(t *testing.T) {
 	q.AddStock(1, 10)
 	q.AddStock(1, 20)
 
-	q.RemoveStock(1, 20, nil)
+	q.RemoveStock(1, 20, nil, false)
 	assertState(t, q.State(), []StockBin{{1, 10}})
 }
 
@@ -128,7 +128,7 @@ func TestFIFO_RemoveMultipleBins(t *testing.T) {
 	q.AddStock(1, 20)
 	q.AddStock(5, 20)
 
-	q.RemoveStock(4, 0, nil)
+	q.RemoveStock(4, 0, nil, false)
 	assertState(t, q.State(), []StockBin{{5, 20}})
 }
 
@@ -139,7 +139,7 @@ func TestFIFO_RemoveMultipleBinsWithRate(t *testing.T) {
 	q.AddStock(1, 20)
 	q.AddStock(5, 20)
 
-	q.RemoveStock(3, 20, nil)
+	q.RemoveStock(3, 20, nil, false)
 	assertState(t, q.State(), []StockBin{{1, 10}, {5, 20}})
 }
 
@@ -152,14 +152,14 @@ func TestFIFO_QueueWithUnknownRate(t *testing.T) {
 
 	assertTotalValue(t, q.State(), 10)
 
-	q.RemoveStock(3, 1, nil)
+	q.RemoveStock(3, 1, nil, false)
 	assertState(t, q.State(), []StockBin{{1, 4}})
 }
 
 func TestFIFO_RoundingOff(t *testing.T) {
 	q := NewFIFOValuation(nil)
 	q.AddStock(1.0, 1.0)
-	q.RemoveStock(1.0-1e-9, 0, nil)
+	q.RemoveStock(1.0-1e-9, 0, nil, false)
 	assertTotalQty(t, q.State(), 0)
 }
 
@@ -186,9 +186,9 @@ func TestFIFO_Totals(t *testing.T) {
 	q.AddStock(1, 10)
 	q.AddStock(2, 13)
 	q.AddStock(1, 17)
-	q.RemoveStock(1, 0, nil)
-	q.RemoveStock(1, 0, nil)
-	q.RemoveStock(1, 0, nil)
+	q.RemoveStock(1, 0, nil, false)
+	q.RemoveStock(1, 0, nil, false)
+	q.RemoveStock(1, 0, nil, false)
 	q.AddStock(5, 17)
 	q.AddStock(8, 11)
 	// Just ensure no panic; the Python test doesn't assert values either.
@@ -197,6 +197,24 @@ func TestFIFO_Totals(t *testing.T) {
 		// This would be suspicious; the queue should have stock.
 		// But mirroring Python test which just runs without assertion.
 	}
+}
+
+func TestFIFO_ReturnPurchaseEntryRateMatching(t *testing.T) {
+	// When isReturnPurchaseEntry is true and outgoingRate is 0,
+	// we should still attempt rate-matching (matching rate=0 bins).
+	q := NewFIFOValuation(nil)
+	q.AddStock(10, 100)
+	q.AddStock(5, 200)
+
+	// With isReturnPurchaseEntry=false and outgoingRate=0, consumes FIFO from front
+	consumed := q.RemoveStock(3, 0, nil, false)
+	assertConsumed(t, consumed, []StockBin{{3, 100}})
+	assertState(t, q.State(), []StockBin{{7, 100}, {5, 200}})
+
+	// With isReturnPurchaseEntry=true and outgoingRate=200, matches rate=200 bin
+	consumed = q.RemoveStock(2, 200, nil, true)
+	assertConsumed(t, consumed, []StockBin{{2, 200}})
+	assertState(t, q.State(), []StockBin{{7, 100}, {3, 200}})
 }
 
 // =====================
@@ -219,7 +237,7 @@ func TestLIFO_MergeNewStock(t *testing.T) {
 func TestLIFO_SimpleRemoval(t *testing.T) {
 	s := NewLIFOValuation(nil)
 	s.AddStock(1, 10)
-	s.RemoveStock(1, 0, nil)
+	s.RemoveStock(1, 0, nil, false)
 	assertTotalQty(t, s.State(), 0)
 }
 
@@ -238,7 +256,7 @@ func TestLIFO_AddingNegativeStockUpdatesRate(t *testing.T) {
 func TestLIFO_RoundingOff(t *testing.T) {
 	s := NewLIFOValuation(nil)
 	s.AddStock(1.0, 1.0)
-	s.RemoveStock(1.0-1e-9, 0, nil)
+	s.RemoveStock(1.0-1e-9, 0, nil, false)
 	assertTotalQty(t, s.State(), 0)
 }
 
@@ -246,7 +264,7 @@ func TestLIFO_Consumption(t *testing.T) {
 	s := NewLIFOValuation(nil)
 	s.AddStock(10, 10)
 	s.AddStock(10, 20)
-	consumed := s.RemoveStock(15, 0, nil)
+	consumed := s.RemoveStock(15, 0, nil, false)
 	assertConsumed(t, consumed, []StockBin{{10, 20}, {5, 10}})
 	assertTotalQty(t, s.State(), 5)
 }
@@ -255,7 +273,7 @@ func TestLIFO_ConsumptionGoingNegative(t *testing.T) {
 	s := NewLIFOValuation(nil)
 	s.AddStock(10, 10)
 	s.AddStock(10, 20)
-	consumed := s.RemoveStock(25, 0, nil)
+	consumed := s.RemoveStock(25, 0, nil, false)
 	assertConsumed(t, consumed, []StockBin{{10, 20}, {10, 10}, {5, 10}})
 	assertTotalQty(t, s.State(), -5)
 }
@@ -264,19 +282,19 @@ func TestLIFO_ConsumptionMultiple(t *testing.T) {
 	s := NewLIFOValuation(nil)
 	s.AddStock(1, 1)
 	s.AddStock(2, 2)
-	consumed := s.RemoveStock(1, 0, nil)
+	consumed := s.RemoveStock(1, 0, nil, false)
 	assertConsumed(t, consumed, []StockBin{{1, 2}})
 
 	s.AddStock(3, 3)
-	consumed = s.RemoveStock(4, 0, nil)
+	consumed = s.RemoveStock(4, 0, nil, false)
 	assertConsumed(t, consumed, []StockBin{{3, 3}, {1, 2}})
 
 	s.AddStock(4, 4)
-	consumed = s.RemoveStock(5, 0, nil)
+	consumed = s.RemoveStock(5, 0, nil, false)
 	assertConsumed(t, consumed, []StockBin{{4, 4}, {1, 1}})
 
 	s.AddStock(5, 5)
-	consumed = s.RemoveStock(5, 0, nil)
+	consumed = s.RemoveStock(5, 0, nil, false)
 	assertConsumed(t, consumed, []StockBin{{5, 5}})
 }
 
@@ -301,7 +319,7 @@ func TestFIFO_QtyHypothesis(t *testing.T) {
 				totalQty += qty
 			} else {
 				absQty := math.Abs(qty)
-				consumed := q.RemoveStock(absQty, 0, nil)
+				consumed := q.RemoveStock(absQty, 0, nil, false)
 				consumedQty := 0.0
 				for _, c := range consumed {
 					consumedQty += c.Qty
@@ -335,7 +353,7 @@ func TestFIFO_QtyValueNonNegHypothesis(t *testing.T) {
 				totalValue += qty * rate
 			} else {
 				absQty := math.Abs(qty)
-				consumed := q.RemoveStock(absQty, 0, nil)
+				consumed := q.RemoveStock(absQty, 0, nil, false)
 				consumedQty := 0.0
 				for _, c := range consumed {
 					consumedQty += c.Qty
@@ -371,7 +389,7 @@ func TestLIFO_QtyHypothesis(t *testing.T) {
 				totalQty += qty
 			} else {
 				absQty := math.Abs(qty)
-				consumed := s.RemoveStock(absQty, 0, nil)
+				consumed := s.RemoveStock(absQty, 0, nil, false)
 				consumedQty := 0.0
 				for _, c := range consumed {
 					consumedQty += c.Qty
@@ -405,7 +423,7 @@ func TestLIFO_QtyValueNonNegHypothesis(t *testing.T) {
 				totalValue += qty * rate
 			} else {
 				absQty := math.Abs(qty)
-				consumed := s.RemoveStock(absQty, 0, nil)
+				consumed := s.RemoveStock(absQty, 0, nil, false)
 				consumedQty := 0.0
 				for _, c := range consumed {
 					consumedQty += c.Qty

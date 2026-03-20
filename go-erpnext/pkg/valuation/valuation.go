@@ -18,7 +18,7 @@ type StockBin struct {
 // BinWiseValuation is the interface for bin-based stock valuation methods.
 type BinWiseValuation interface {
 	AddStock(qty, rate float64)
-	RemoveStock(qty, outgoingRate float64, rateGenerator func() float64) []StockBin
+	RemoveStock(qty, outgoingRate float64, rateGenerator func() float64, isReturnPurchaseEntry bool) []StockBin
 	State() []StockBin
 	GetTotalStockAndValue() (float64, float64)
 }
@@ -93,7 +93,8 @@ func (f *FIFOValuation) AddStock(qty, rate float64) {
 
 // RemoveStock removes stock from the FIFO queue and returns consumed bins.
 // If rateGenerator is nil, a default function returning 0.0 is used.
-func (f *FIFOValuation) RemoveStock(qty, outgoingRate float64, rateGenerator func() float64) []StockBin {
+// When isReturnPurchaseEntry is true, rate-matching is attempted even if outgoingRate is 0.
+func (f *FIFOValuation) RemoveStock(qty, outgoingRate float64, rateGenerator func() float64, isReturnPurchaseEntry bool) []StockBin {
 	if rateGenerator == nil {
 		rateGenerator = func() float64 { return 0.0 }
 	}
@@ -107,7 +108,7 @@ func (f *FIFOValuation) RemoveStock(qty, outgoingRate float64, rateGenerator fun
 		}
 
 		index := 0
-		if outgoingRate > 0 {
+		if outgoingRate > 0 || isReturnPurchaseEntry {
 			// Find the entry where rate matches outgoing rate
 			found := false
 			for idx, fifoBin := range f.queue {
@@ -220,7 +221,7 @@ func (l *LIFOValuation) AddStock(qty, rate float64) {
 // RemoveStock removes stock from the LIFO stack and returns consumed bins.
 // outgoingRate is ignored for LIFO (kept for interface compatibility).
 // If rateGenerator is nil, a default function returning 0.0 is used.
-func (l *LIFOValuation) RemoveStock(qty, outgoingRate float64, rateGenerator func() float64) []StockBin {
+func (l *LIFOValuation) RemoveStock(qty, outgoingRate float64, rateGenerator func() float64, isReturnPurchaseEntry bool) []StockBin {
 	if rateGenerator == nil {
 		rateGenerator = func() float64 { return 0.0 }
 	}
