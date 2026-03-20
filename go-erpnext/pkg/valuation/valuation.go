@@ -101,7 +101,7 @@ func (f *FIFOValuation) RemoveStock(qty, outgoingRate float64, rateGenerator fun
 
 	var consumedBins []StockBin
 
-	for qty != 0 {
+	for qty > 0 && !nearZero(qty) {
 		if len(f.queue) == 0 {
 			// rely on rate generator
 			f.queue = append(f.queue, StockBin{0, rateGenerator()})
@@ -126,6 +126,24 @@ func (f *FIFOValuation) RemoveStock(qty, outgoingRate float64, rateGenerator fun
 
 		// select first bin or the bin with same rate
 		fifoBin := &f.queue[index]
+
+		// Skip zero-quantity bins to avoid infinite loops where
+		// removing 0 from qty leaves it unchanged.
+		if fifoBin.Qty == 0 {
+			f.queue = append(f.queue[:index], f.queue[index+1:]...)
+			if len(f.queue) == 0 {
+				// No real stock left; record negative stock and exit.
+				rate := outgoingRate
+				if rate == 0 {
+					rate = fifoBin.Rate
+				}
+				f.queue = append(f.queue, StockBin{-qty, rate})
+				consumedBins = append(consumedBins, StockBin{qty, rate})
+				break
+			}
+			continue
+		}
+
 		if qty >= fifoBin.Qty {
 			// consume current bin
 			qty = RoundOffIfNearZero(qty-fifoBin.Qty, 7)
@@ -228,7 +246,7 @@ func (l *LIFOValuation) RemoveStock(qty, outgoingRate float64, rateGenerator fun
 
 	var consumedBins []StockBin
 
-	for qty != 0 {
+	for qty > 0 && !nearZero(qty) {
 		if len(l.stack) == 0 {
 			// rely on rate generator
 			l.stack = append(l.stack, StockBin{0, rateGenerator()})
@@ -238,6 +256,24 @@ func (l *LIFOValuation) RemoveStock(qty, outgoingRate float64, rateGenerator fun
 		index := len(l.stack) - 1
 
 		stockBin := &l.stack[index]
+
+		// Skip zero-quantity bins to avoid infinite loops where
+		// removing 0 from qty leaves it unchanged.
+		if stockBin.Qty == 0 {
+			l.stack = l.stack[:index]
+			if len(l.stack) == 0 {
+				// No real stock left; record negative stock and exit.
+				rate := outgoingRate
+				if rate == 0 {
+					rate = stockBin.Rate
+				}
+				l.stack = append(l.stack, StockBin{-qty, rate})
+				consumedBins = append(consumedBins, StockBin{qty, rate})
+				break
+			}
+			continue
+		}
+
 		if qty >= stockBin.Qty {
 			// consume current bin
 			qty = RoundOffIfNearZero(qty-stockBin.Qty, 7)
@@ -271,6 +307,14 @@ func (l *LIFOValuation) RemoveStock(qty, outgoingRate float64, rateGenerator fun
 // GetTotalStockAndValue returns the total quantity and total value across all bins.
 func (l *LIFOValuation) GetTotalStockAndValue() (float64, float64) {
 	return getTotalStockAndValue(l.stack)
+}
+
+// nearZero returns true if the absolute value is within the near-zero
+// tolerance (1e-7). Used as a loop guard to prevent infinite loops
+// caused by floating-point residuals that RoundOffIfNearZero doesn't
+// quite eliminate.
+func nearZero(v float64) bool {
+	return math.Abs(v) < 1e-7
 }
 
 // --- shared helpers ---
