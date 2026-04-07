@@ -94,7 +94,7 @@ docker compose -f pwd.yml down -v     # Also remove volumes (full reset)
 ## Troubleshooting
 - If the site doesn't load after startup, check `create-site` logs — it may still be running
 - The `background-jobs` page URL may not exist in all versions; verify workers via docker logs instead
-- The app requires Python >=3.14 for local (non-Docker) development, which may not be available in standard pyenv — use Docker instead
+- The app requires Python >=3.12 for local (non-Docker) development
 
 ## Devin Secrets Needed
 None required for basic testing with Docker setup (uses default admin/admin credentials).
