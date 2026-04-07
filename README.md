@@ -97,6 +97,12 @@ See [Frappe Docker](https://github.com/frappe/frappe_docker?tab=readme-ov-file#t
 
 
 ## Development Setup
+
+### Prerequisites
+- Python 3.12 or later (LTS)
+- Node.js 24.x
+- MariaDB 10.6+ or PostgreSQL 13.3+
+
 ### Manual Install
 
 The Easy Way: our install script for bench will install all dependencies (e.g. MariaDB). See https://github.com/frappe/bench for more details.
