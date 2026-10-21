@@ -1,55 +1,87 @@
 accounts:
-- erpnext/accounts/*
-- erpnext/controllers/accounts_controller.py
-- erpnext/controllers/taxes_and_totals.py
+- changed-files:
+  - any-glob-to-any-file:
+    - erpnext/accounts/*
+    - erpnext/controllers/accounts_controller.py
+    - erpnext/controllers/taxes_and_totals.py
 
 stock:
-- erpnext/stock/*
-- erpnext/controllers/stock_controller.py
-- erpnext/controllers/item_variant.py
+- changed-files:
+  - any-glob-to-any-file:
+    - erpnext/stock/*
+    - erpnext/controllers/stock_controller.py
+    - erpnext/controllers/item_variant.py
 
 assets:
-- erpnext/assets/*
+- changed-files:
+  - any-glob-to-any-file:
+    - erpnext/assets/*
 
 regional:
-- erpnext/regional/*
+- changed-files:
+  - any-glob-to-any-file:
+    - erpnext/regional/*
 
 selling:
-- erpnext/selling/*
-- erpnext/controllers/selling_controller.py
+- changed-files:
+  - any-glob-to-any-file:
+    - erpnext/selling/*
+    - erpnext/controllers/selling_controller.py
 
 buying:
-- erpnext/buying/*
-- erpnext/controllers/buying_controller.py
+- changed-files:
+  - any-glob-to-any-file:
+    - erpnext/buying/*
+    - erpnext/controllers/buying_controller.py
 
 support:
-- erpnext/support/*
+- changed-files:
+  - any-glob-to-any-file:
+    - erpnext/support/*
 
 POS:
-- pos*
+- changed-files:
+  - any-glob-to-any-file:
+    - pos*
 
 ecommerce:
-- erpnext/e_commerce/*
+- changed-files:
+  - any-glob-to-any-file:
+    - erpnext/e_commerce/*
 
 maintenance:
-- erpnext/maintenance/*
+- changed-files:
+  - any-glob-to-any-file:
+    - erpnext/maintenance/*
 
 manufacturing:
-- erpnext/manufacturing/*
+- changed-files:
+  - any-glob-to-any-file:
+    - erpnext/manufacturing/*
 
 crm:
-- erpnext/crm/*
+- changed-files:
+  - any-glob-to-any-file:
+    - erpnext/crm/*
 
 HR:
-- erpnext/hr/*
+- changed-files:
+  - any-glob-to-any-file:
+    - erpnext/hr/*
 
 payroll:
-- erpnext/payroll*
+- changed-files:
+  - any-glob-to-any-file:
+    - erpnext/payroll*
 
 projects:
-- erpnext/projects/*
+- changed-files:
+  - any-glob-to-any-file:
+    - erpnext/projects/*
 
 # Any python files modifed but no test files modified
 needs-tests:
-- any: ['erpnext/**/*.py']
-  all: ['!erpnext/**/test*.py']
+- all:
+  - changed-files:
+    - any-glob-to-any-file: 'erpnext/**/*.py'
+    - all-globs-to-all-files: '!erpnext/**/test*.py'
